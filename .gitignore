@@ -1,0 +1,16 @@
+__pycache__
+.cursor
+.DS_Store
+.env
+.github
+.log
+milvus
+logs
+models
+qlora_model
+target
+tarpaulin-report.html
+crates/cascade-agent/credentials.json
+crates/cascade-agent/config/default.yaml
+crates/cascade-kb/data
+crates/cascade-cdas/cdas-agent/tests/e2e/data

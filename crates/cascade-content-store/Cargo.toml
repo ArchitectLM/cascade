@@ -1,0 +1,38 @@
+[package]
+name = "cascade-content-store"
+version = "0.1.0"
+edition = "2021"
+description = "Abstraction and implementations for content-addressed storage (KV/CAS) for Cascade."
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+tokio = { version = "1.28", features = ["sync"] } # Needed sync.
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+thiserror = "1.0"
+anyhow = "1.0"
+async-trait = "0.1" # Needed for impl trait
+tracing = "0.1"
+
+# For hashing and encoding
+sha2 = "0.10"
+hex = "0.4"
+
+# Concrete store dependencies
+redis = { version = "0.21", optional = true } # Redis Implementation
+reqwest = { version = "0.11", features = ["json"] } # HTTP client
+uuid = { version = "1", features = ["v4"] }
+
+[dev-dependencies]
+# For simple test cases use this
+mini-redis = { version = "0.4" }
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+mockall = "0.12"
+tokio = { version = "1.28", features = ["sync", "macros", "rt-multi-thread"] }
+wiremock = "0.5" # For testing HTTP-based implementations
+
+[features]
+redis-store = ["dep:redis"]
+cloudflare-kv = []
+default = []

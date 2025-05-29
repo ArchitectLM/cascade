@@ -1,0 +1,59 @@
+[package]
+name = "cascade-integration-tests"
+version = "0.1.0"
+edition = "2021"
+publish = false
+
+[dependencies]
+cascade-core = { path = "../../crates/cascade-core" }
+cascade-stdlib = { path = "../../crates/cascade-stdlib" }
+cascade-test-utils = { path = "../../crates/cascade-test-utils", features = ["default"] }
+tokio = { workspace = true }
+serde_json = { workspace = true }
+serde = { workspace = true }
+serde_yaml = { workspace = true }
+anyhow = "1.0"
+rand = "0.8"
+futures = "0.3"
+reqwest = { workspace = true }
+async-trait = { workspace = true }
+tracing = { workspace = true }
+regex = "1.9"
+mockall = "0.11"
+
+[features]
+default = ["test-utils"]
+test-utils = []
+
+[[test]]
+name = "core_example"
+path = "core_example.rs"
+
+[[test]]
+name = "dsl_example"
+path = "dsl_example.rs"
+
+[[test]]
+name = "server_example"
+path = "server_example.rs"
+
+[[test]]
+name = "edge_resilience_example"
+path = "edge_resilience_example.rs"
+
+[[test]]
+name = "monitoring_example"
+path = "monitoring_example.rs"
+
+[[test]]
+name = "retry_component_test"
+path = "retry_component_test.rs"
+harness = true
+
+[[test]]
+name = "timer_service_test"
+path = "timer_service_test.rs"
+harness = true
+
+[lib]
+path = "lib.rs" 

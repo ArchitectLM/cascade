@@ -1,0 +1,89 @@
+dsl_version: "1.0"
+
+definitions:
+  components:
+    - name: ValidateDocument
+      type: StdLib:JsonSchemaValidator
+      config:
+        schema:
+          $ref: "https://example.com/schemas/document.json"
+
+    - name: ConvertXmlToJson
+      type: StdLib:XmlToJson
+      config:
+        inputFormat: XML
+
+    - name: TransformDocument
+      type: StdLib:DataMapper
+      config:
+        mappingRef: "https://example.com/mappings/document.json"
+        sourceFormat: JSON
+        targetFormat: JSON
+
+    - name: StoreDocument
+      type: StdLib:SqsPublisher
+      config:
+        queueUrl: "https://sqs.us-east-1.amazonaws.com/123456789012/document-storage-queue"
+        region: "us-east-1"
+        messageBodyExpression: "data"
+        messageBodyLanguage: JMESPath
+
+    - name: LogSuccess
+      type: StdLib:Logger
+      config:
+        level: INFO
+        messageExpression: "data.documentId"
+        language: JMESPath
+
+    - name: SendToDlq
+      type: StdLib:SqsPublisher
+      config:
+        queueUrl: "https://sqs.us-east-1.amazonaws.com/123456789012/document-dlq-queue"
+        region: "us-east-1"
+        messageBodyExpression: "data"
+        messageBodyLanguage: JMESPath
+
+  flows:
+    - name: HandleDocumentWebhook
+      trigger:
+        type: StdLib:SqsReceiver
+        config:
+          queueUrl: "https://sqs.us-east-1.amazonaws.com/123456789012/document-webhook-queue"
+          region: "us-east-1"
+          batchSize: 10
+          waitTimeSeconds: 20
+      steps:
+        - step_id: ValidateDocument
+          component_ref: ValidateDocument
+          inputs_map:
+            data: "trigger.message.body"
+
+        - step_id: ConvertXmlToJson
+          component_ref: ConvertXmlToJson
+          inputs_map:
+            data: "previous_step.outputs.result"
+
+        - step_id: TransformDocument
+          component_ref: TransformDocument
+          inputs_map:
+            data: "previous_step.outputs.result"
+
+        - step_id: StoreDocument
+          component_ref: StoreDocument
+          inputs_map:
+            data: "previous_step.outputs.result"
+
+        - step_id: LogSuccess
+          component_ref: LogSuccess
+          inputs_map:
+            data: "previous_step.outputs.result"
+
+        - step_id: SendToDlq
+          component_ref: SendToDlq
+          inputs_map:
+            data: "previous_step.outputs.result"
+          condition:
+            type: StdLib:FilterData
+            config:
+              expression: "data.documentId == null"
+              language: JMESPath

@@ -1,0 +1,21 @@
+{
+  "db": "PostgreSQL",
+  "c6fdf8ae060c92b6c3d55bf21dbccc9afeb52cbe89b42a8e5e6cf88f59ddb50f": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": [
+          "Text",
+          "Text",
+          "Text",
+          "Jsonb",
+          "Timestamptz",
+          "Timestamptz"
+        ]
+      }
+    },
+    "query": "\n            INSERT INTO flow_instances (id, flow_id, status, data, created_at, updated_at)\n            VALUES ($1, $2, $3, $4, $5, $6)\n            ON CONFLICT (id) DO UPDATE SET \n                flow_id = $2,\n                status = $3,\n                data = $4,\n                updated_at = $6\n            "
+  },
+  "version": "1"
+} 

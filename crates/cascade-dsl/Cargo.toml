@@ -1,0 +1,25 @@
+[package]
+name = "cascade-dsl"
+version = "0.1.0"
+edition = "2021"
+description = "Defines and handles the Cascade YAML DSL parsing, validation, and structures."
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+serde_yaml = "0.9"
+thiserror = "1.0"
+anyhow = "1.0"
+# Add dependency for schema validation if used
+jsonschema = "0.17" #Or latest
+# Needed for nom for DSL extension.
+#nom = { version = "7", features = ["alloc"] }
+lazy_static = "1.4"
+regex = "1.5"
+
+
+[dev-dependencies]
+# Add any specific test dependencies
+pretty_assertions = "1.4"

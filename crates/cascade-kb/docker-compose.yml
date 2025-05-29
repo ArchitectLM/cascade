@@ -1,0 +1,358 @@
+version: '3.8'
+
+services:
+  # Neo4j database for KB
+  neo4j:
+    image: neo4j:5.18.0-community
+    container_name: cdas-kb-test-neo4j
+    ports:
+      - "17474:7474"  # HTTP
+      - "17687:7687"  # Bolt
+    environment:
+      - NEO4J_AUTH=neo4j/password
+      - NEO4J_server_config_strict__validation_enabled=false
+      # Enable vector procedures
+      - NEO4J_dbms_security_procedures_unrestricted=apoc.*,db.index.vector.*
+      - NEO4J_dbms_security_procedures_allowlist=apoc.*,db.index.vector.*
+      # APOC settings
+      - NEO4J_apoc_export_file_enabled=true
+      - NEO4J_apoc_import_file_enabled=true
+      - NEO4J_apoc_import_file_use__neo4j__config=true
+      # Memory settings
+      - NEO4J_server_memory_heap_initial__size=1G
+      - NEO4J_server_memory_heap_max__size=2G
+      - NEO4J_server_memory_pagecache_size=1G
+      # Security settings
+      - NEO4J_dbms_security_allow__csv__import__from__file__urls=true
+      - NEO4J_dbms_connector_bolt_enabled=true
+      - NEO4J_dbms_connector_http_enabled=true
+    volumes:
+      - ./plugins:/plugins
+      - neo4j-data:/data
+      - neo4j-logs:/logs
+      - neo4j-plugins:/plugins
+    healthcheck:
+      test: ["CMD", "wget", "-O", "-", "http://localhost:7474" ]
+      interval: 10s
+      timeout: 10s
+      retries: 20
+    dns:
+      - 8.8.8.8
+      - 8.8.4.4
+
+  # Redis for feedback context cache
+  redis:
+    image: redis:7.0
+    container_name: cascade-cdas-test-redis
+    ports:
+      - "16379:6379"
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    dns:
+      - 8.8.8.8
+      - 8.8.4.4
+
+  # Postgres for storage
+  postgres:
+    image: postgres:14
+    container_name: cascade-cdas-test-postgres
+    ports:
+      - "15432:5432"
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: cdas_test
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    dns:
+      - 8.8.8.8
+      - 8.8.4.4
+
+  # Setup workspace service
+  setup-workspace:
+    image: rust:latest
+    container_name: cascade-kb-setup
+    volumes:
+      - /Users/maxsvargal/Documents/Projects/nocode/cascade/crates/cascade-kb:/source/crates/cascade-kb:ro
+      - /Users/maxsvargal/Documents/Projects/nocode/cascade/crates/cascade-interfaces:/source/crates/cascade-interfaces:ro
+      - /Users/maxsvargal/Documents/Projects/nocode/cascade/crates/cascade-cdas:/source/crates/cascade-cdas:ro
+      - /Users/maxsvargal/Documents/Projects/nocode/cascade/crates/cascade-core:/source/crates/cascade-core:ro
+      - /Users/maxsvargal/Documents/Projects/nocode/cascade/crates/cascade-server:/source/crates/cascade-server:ro
+      - /Users/maxsvargal/Documents/Projects/nocode/cascade/crates/cascade-content-store:/source/crates/cascade-content-store:ro
+      - /Users/maxsvargal/Documents/Projects/nocode/cascade/crates/cascade-dsl:/source/crates/cascade-dsl:ro
+      - /Users/maxsvargal/Documents/Projects/nocode/cascade/crates/cascade-edge:/source/crates/cascade-edge:ro
+      - /Users/maxsvargal/Documents/Projects/nocode/cascade/crates/cascade-monitoring:/source/crates/cascade-monitoring:ro
+      - /Users/maxsvargal/Documents/Projects/nocode/cascade/crates/cascade-stdlib:/source/crates/cascade-stdlib:ro
+      - /Users/maxsvargal/Documents/Projects/nocode/cascade/crates/cascade-state-inmemory:/source/crates/cascade-state-inmemory:ro
+      - /Users/maxsvargal/Documents/Projects/nocode/cascade/crates/cascade-state-postgres:/source/crates/cascade-state-postgres:ro
+      - /Users/maxsvargal/Documents/Projects/nocode/cascade/crates/cascade-test-utils:/source/crates/cascade-test-utils:ro
+      - /Users/maxsvargal/Documents/Projects/nocode/cascade/Cargo.toml:/source/Cargo.toml:ro
+      - /Users/maxsvargal/Documents/Projects/nocode/cascade/Cargo.lock:/source/Cargo.lock:ro
+      - cascade-workspace:/app
+    dns:
+      - 8.8.8.8
+      - 8.8.4.4
+    command: >
+      bash -c "
+        set -ex
+        # Create a minimal workspace structure
+        mkdir -p /app/crates/cascade-kb/src
+        mkdir -p /app/crates/cascade-interfaces/src
+        mkdir -p /app/crates/cascade-cdas/src
+        mkdir -p /app/crates/cascade-cdas/cdas-agent/src
+        mkdir -p /app/crates/cascade-cdas/cdas-agent/tests/e2e
+        mkdir -p /app/crates/cascade-core/src
+        mkdir -p /app/crates/cascade-server/src
+        mkdir -p /app/crates/cascade-content-store/src
+        mkdir -p /app/crates/cascade-dsl/src
+        mkdir -p /app/crates/cascade-edge/src
+        mkdir -p /app/crates/cascade-monitoring/src
+        mkdir -p /app/crates/cascade-stdlib/src
+        mkdir -p /app/crates/cascade-state-inmemory/src
+        mkdir -p /app/crates/cascade-state-postgres/src
+        mkdir -p /app/crates/cascade-test-utils/src
+        mkdir -p /app/tests
+        
+        # Copy files needed for testing
+        cp -r /source/crates/cascade-kb/* /app/crates/cascade-kb/
+        cp -r /source/crates/cascade-interfaces/* /app/crates/cascade-interfaces/
+        cp -r /source/crates/cascade-core/* /app/crates/cascade-core/
+        cp -r /source/crates/cascade-server/* /app/crates/cascade-server/
+        cp -r /source/crates/cascade-content-store/* /app/crates/cascade-content-store/
+        cp -r /source/crates/cascade-dsl/* /app/crates/cascade-dsl/
+        cp -r /source/crates/cascade-edge/* /app/crates/cascade-edge/
+        cp -r /source/crates/cascade-monitoring/* /app/crates/cascade-monitoring/
+        cp -r /source/crates/cascade-stdlib/* /app/crates/cascade-stdlib/
+        cp -r /source/crates/cascade-state-inmemory/* /app/crates/cascade-state-inmemory/
+        cp -r /source/crates/cascade-state-postgres/* /app/crates/cascade-state-postgres/
+        cp -r /source/crates/cascade-test-utils/* /app/crates/cascade-test-utils/
+        
+        # Copy cdas-agent
+        cp -r /source/crates/cascade-cdas/cdas-agent /app/crates/cascade-cdas/
+        
+        # Copy main project files
+        cp /source/Cargo.toml /app/
+        cp /source/Cargo.lock /app/
+        
+        # Create necessary Cargo.toml files if they don't exist
+        if [ ! -f /app/crates/cascade-cdas/Cargo.toml ]; then
+          echo '[package]' > /app/crates/cascade-cdas/Cargo.toml
+          echo 'name = \"cascade-cdas\"' >> /app/crates/cascade-cdas/Cargo.toml
+          echo 'version = \"0.1.0\"' >> /app/crates/cascade-cdas/Cargo.toml
+          echo 'edition = \"2021\"' >> /app/crates/cascade-cdas/Cargo.toml
+          echo '' >> /app/crates/cascade-cdas/Cargo.toml
+          echo '[dependencies]' >> /app/crates/cascade-cdas/Cargo.toml
+          echo 'cascade-interfaces = { path = \"../cascade-interfaces\" }' >> /app/crates/cascade-cdas/Cargo.toml
+          echo 'cascade-core = { path = \"../cascade-core\" }' >> /app/crates/cascade-cdas/Cargo.toml
+          echo 'cascade-server = { path = \"../cascade-server\" }' >> /app/crates/cascade-cdas/Cargo.toml
+          echo '' >> /app/crates/cascade-cdas/Cargo.toml
+          echo '[workspace]' >> /app/crates/cascade-cdas/Cargo.toml
+          echo 'members = [\"cdas-agent\"]' >> /app/crates/cascade-cdas/Cargo.toml
+        fi
+        
+        # Create minimal test package
+        echo '[package]' > /app/tests/Cargo.toml
+        echo 'name = \"cascade-tests\"' >> /app/tests/Cargo.toml
+        echo 'version = \"0.1.0\"' >> /app/tests/Cargo.toml
+        echo 'edition = \"2021\"' >> /app/tests/Cargo.toml
+        mkdir -p /app/tests/src
+        echo 'fn main() {}' > /app/tests/src/main.rs
+        
+        # Print workspace structure
+        echo '=== Workspace Structure ==='
+        find /app -type f -name Cargo.toml | sort
+        
+        # Verify cdas-agent structure
+        echo '=== CDAS Agent Structure ==='
+        find /app/crates/cascade-cdas/cdas-agent -type f | grep -v target | head -10
+      "
+
+  # KB API server
+  kb-api:
+    image: rust:latest
+    container_name: cascade-kb-api
+    depends_on:
+      neo4j:
+        condition: service_healthy
+      setup-workspace:
+        condition: service_completed_successfully
+    environment:
+      - NEO4J_URI=neo4j://neo4j:7687
+      - NEO4J_USERNAME=neo4j
+      - NEO4J_PASSWORD=password
+      - NEO4J_DATABASE=neo4j
+      - NEO4J_POOL_SIZE=10
+      - RUST_LOG=cascade_kb=debug,tower_http=debug
+      - KB_API_PORT=8090
+      - RUST_BACKTRACE=1
+    volumes:
+      - /Users/maxsvargal/Documents/Projects/nocode/cascade/crates/cascade-kb:/app/crates/cascade-kb:delegated
+      - /Users/maxsvargal/Documents/Projects/nocode/cascade/crates/cascade-interfaces:/app/crates/cascade-interfaces:delegated
+      - /Users/maxsvargal/Documents/Projects/nocode/cascade/crates/cascade-core:/app/crates/cascade-core:delegated
+      - /Users/maxsvargal/Documents/Projects/nocode/cascade/crates/cascade-server:/app/crates/cascade-server:delegated
+      - /Users/maxsvargal/Documents/Projects/nocode/cascade/crates/cascade-content-store:/app/crates/cascade-content-store:delegated
+      - /Users/maxsvargal/Documents/Projects/nocode/cascade/crates/cascade-dsl:/app/crates/cascade-dsl:delegated
+      - /Users/maxsvargal/Documents/Projects/nocode/cascade/crates/cascade-edge:/app/crates/cascade-edge:delegated
+      - /Users/maxsvargal/Documents/Projects/nocode/cascade/crates/cascade-monitoring:/app/crates/cascade-monitoring:delegated
+      - /Users/maxsvargal/Documents/Projects/nocode/cascade/crates/cascade-stdlib:/app/crates/cascade-stdlib:delegated
+      - /Users/maxsvargal/Documents/Projects/nocode/cascade/crates/cascade-state-inmemory:/app/crates/cascade-state-inmemory:delegated
+      - /Users/maxsvargal/Documents/Projects/nocode/cascade/crates/cascade-state-postgres:/app/crates/cascade-state-postgres:delegated
+      - /Users/maxsvargal/Documents/Projects/nocode/cascade/crates/cascade-test-utils:/app/crates/cascade-test-utils:delegated
+      - /Users/maxsvargal/Documents/Projects/nocode/cascade/Cargo.toml:/app/Cargo.toml:delegated
+      - /Users/maxsvargal/Documents/Projects/nocode/cascade/Cargo.lock:/app/Cargo.lock:delegated
+    working_dir: /app
+    ports:
+      - "18090:8090"
+    dns:
+      - 8.8.8.8
+      - 8.8.4.4
+    command: >
+      bash -c "
+        set -ex
+        
+        # Create directories first
+        mkdir -p /app/tests/src
+        
+        # Update apt and install dependencies
+        echo 'nameserver 8.8.8.8' > /etc/resolv.conf
+        apt-get update && 
+        apt-get install -y pkg-config libssl-dev curl &&
+        
+        # Create minimal tests directory to satisfy workspace requirements
+        echo '[package]' > /app/tests/Cargo.toml
+        echo 'name = \"cascade-tests\"' >> /app/tests/Cargo.toml
+        echo 'version = \"0.1.0\"' >> /app/tests/Cargo.toml
+        echo 'edition = \"2021\"' >> /app/tests/Cargo.toml
+        echo 'fn main() {}' > /app/tests/src/main.rs
+        
+        # Run the KB API server
+        cd crates/cascade-kb &&
+        cargo run --bin kb-api-server --features=api-server,adapters
+      "
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8090/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 120s
+
+  # CDAS Agent service
+  cdas-agent:
+    image: rust:latest
+    container_name: cascade-cdas-agent
+    depends_on:
+      neo4j:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+      kb-api:
+        condition: service_healthy
+    environment:
+      - TEST_NEO4J_URI=neo4j://neo4j:7687
+      - TEST_NEO4J_USERNAME=neo4j
+      - TEST_NEO4J_PASSWORD=password
+      - TEST_REDIS_URL=redis://redis:6379
+      - TEST_POSTGRES_URL=postgres://postgres:postgres@postgres:5432/cdas_test
+      - TEST_KB_API_URL=http://kb-api:8090
+      - RUST_LOG=debug
+      - RUST_BACKTRACE=1
+    volumes:
+      - /Users/maxsvargal/Documents/Projects/nocode/cascade/crates/cascade-cdas:/app/crates/cascade-cdas:delegated
+      - /Users/maxsvargal/Documents/Projects/nocode/cascade/crates/cascade-kb:/app/crates/cascade-kb:delegated
+      - /Users/maxsvargal/Documents/Projects/nocode/cascade/crates/cascade-interfaces:/app/crates/cascade-interfaces:delegated
+      - /Users/maxsvargal/Documents/Projects/nocode/cascade/crates/cascade-core:/app/crates/cascade-core:delegated
+      - /Users/maxsvargal/Documents/Projects/nocode/cascade/crates/cascade-server:/app/crates/cascade-server:delegated
+      - /Users/maxsvargal/Documents/Projects/nocode/cascade/crates/cascade-content-store:/app/crates/cascade-content-store:delegated
+      - /Users/maxsvargal/Documents/Projects/nocode/cascade/crates/cascade-dsl:/app/crates/cascade-dsl:delegated
+      - /Users/maxsvargal/Documents/Projects/nocode/cascade/crates/cascade-edge:/app/crates/cascade-edge:delegated
+      - /Users/maxsvargal/Documents/Projects/nocode/cascade/crates/cascade-monitoring:/app/crates/cascade-monitoring:delegated
+      - /Users/maxsvargal/Documents/Projects/nocode/cascade/crates/cascade-stdlib:/app/crates/cascade-stdlib:delegated
+      - /Users/maxsvargal/Documents/Projects/nocode/cascade/crates/cascade-state-inmemory:/app/crates/cascade-state-inmemory:delegated
+      - /Users/maxsvargal/Documents/Projects/nocode/cascade/crates/cascade-state-postgres:/app/crates/cascade-state-postgres:delegated
+      - /Users/maxsvargal/Documents/Projects/nocode/cascade/crates/cascade-test-utils:/app/crates/cascade-test-utils:delegated
+      - /Users/maxsvargal/Documents/Projects/nocode/cascade/Cargo.toml:/app/Cargo.toml:delegated
+      - /Users/maxsvargal/Documents/Projects/nocode/cascade/Cargo.lock:/app/Cargo.lock:delegated
+      - /Users/maxsvargal/Documents/Projects/nocode/cascade/crates/cascade-cdas/cdas-agent/config:/app/config:delegated
+    working_dir: /app
+    ports:
+      - "18080:8080"
+    dns:
+      - 8.8.8.8
+      - 8.8.4.4
+    command: >
+      bash -c "
+        set -ex
+        echo '=== Running e2e tests against KB API ==='
+        
+        # Create directories first
+        mkdir -p /app/tests/src
+        
+        # Update DNS and install dependencies
+        echo 'nameserver 8.8.8.8' > /etc/resolv.conf
+        apt-get update && 
+        apt-get install -y pkg-config libssl-dev curl
+          
+        # Create minimal tests directory for workspace requirements
+        echo '[package]' > /app/tests/Cargo.toml
+        echo 'name = \"cascade-tests\"' >> /app/tests/Cargo.toml
+        echo 'version = \"0.1.0\"' >> /app/tests/Cargo.toml
+        echo 'edition = \"2021\"' >> /app/tests/Cargo.toml
+        echo 'fn main() {}' > /app/tests/src/main.rs
+          
+        # Run tests directly against live services
+        cd crates/cascade-cdas/cdas-agent
+        
+        # Direct KB integration test
+        echo '=== Running direct KB integration test ==='
+        cargo test --test e2e --features=real-kb -- kb_integration::test_direct_kb_integration --exact --ignored -v
+        DIRECT_KB_TEST_STATUS=$?
+          
+        # Remote KB integration test 
+        echo '=== Running remote KB integration test ==='
+        cargo test --test e2e --features=real-kb -- kb_integration::test_remote_kb_integration --exact --ignored -v
+        REMOTE_KB_TEST_STATUS=$?
+          
+        # KB feedback loop test
+        echo '=== Running KB feedback loop test ==='
+        cargo test --test e2e --features=real-kb -- kb_integration::test_kb_feedback_loop --exact --ignored -v
+        FEEDBACK_LOOP_TEST_STATUS=$?
+          
+        echo '=== All Tests Completed ==='
+
+        # Determine overall test status
+        if [ $DIRECT_KB_TEST_STATUS -eq 0 ] && [ $REMOTE_KB_TEST_STATUS -eq 0 ] && [ $FEEDBACK_LOOP_TEST_STATUS -eq 0 ]; then
+          echo 'All tests passed successfully!'
+          exit 0
+        else
+          echo 'Some tests failed!'
+          exit 1
+        fi
+      "
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 120s
+
+volumes:
+  neo4j-data:
+  neo4j-logs:
+  neo4j-plugins:
+  neo4j-import:
+  neo4j-conf:
+  redis-data:
+  postgres-data:
+  cascade-workspace:

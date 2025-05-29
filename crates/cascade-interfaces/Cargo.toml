@@ -1,0 +1,19 @@
+[package]
+name = "cascade-interfaces"
+version = "0.1.0"
+edition = "2021"
+authors = ["Cascade Team"]
+description = "Interface types for Cascade Knowledge Base and Agent integration"
+license = "MIT OR Apache-2.0"
+
+[dependencies]
+# Core dependencies
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+chrono = { version = "0.4", features = ["serde"] }
+uuid = { version = "1.4", features = ["serde", "v4"] }
+thiserror = "1.0"
+async-trait = "0.1"
+
+[features]
+default = [] 

@@ -1,0 +1,143 @@
+[package]
+name = "cascade"
+version = "0.1.0"
+edition = "2021"
+description = "No-code flow-based edge-server application platform"
+
+# Binary targets
+[[bin]]
+name = "run_optimized_tests"
+path = "scripts/run_optimized_tests.rs"
+
+[[bin]]
+name = "analyze_test_coverage"
+path = "scripts/analyze_test_coverage.rs"
+
+[[bin]]
+name = "run_coverage"
+path = "scripts/run_coverage.rs"
+
+[[bin]]
+name = "verify_module_structure"
+path = "scripts/verify_module_structure.rs"
+
+[workspace]
+members = [
+    "crates/*",
+    "tests",
+]
+resolver = "2"
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+authors = ["Cascade Team"]
+license = "MIT OR Apache-2.0"
+rust-version = "1.75.0"
+
+[workspace.dependencies]
+# Common dependencies used across crates
+tokio = { version = "1.28", features = ["full", "signal"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+serde_yaml = "0.9"
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+thiserror = "1"
+anyhow = "1.0"
+reqwest = { version = "0.11", features = ["json", "multipart"] }
+axum = "0.7"
+libsqlite3-sys = "0.30.1"
+async-trait = "0.1.68"
+cucumber = { version = "0.21.1", features = ["macros"] }
+env_logger = "0.10"
+futures-core = "0.3"
+# ... other common deps (uuid, chrono, config, etc.)
+uuid = { version = "1.3", features = ["v4", "serde"] }
+chrono = { version = "0.4", features = ["serde"] }
+
+# Workspace crates (makes referencing easier)
+cascade-core = { path = "crates/cascade-core" }
+cascade-dsl = { path = "crates/cascade-dsl" }
+cascade-stdlib = { path = "crates/cascade-stdlib" }
+cascade-content-store = { path = "crates/cascade-content-store" }
+cascade-server = { path = "crates/cascade-server" }
+cascade-test-utils = { path = "crates/cascade-test-utils" }
+cascade-state-inmemory = { path = "crates/cascade-state-inmemory" }
+cascade-dsl-agent = { path = "crates/cascade-dsl-agent" }
+cascade-tests = { path = "tests", features = ["all"] }
+cdas-agent = { path = "crates/cascade-cdas/cdas-agent" }
+cdas-api-types = { path = "crates/cascade-cdas/cdas-api-types" }
+cdas-config = { path = "crates/cascade-cdas/cdas-config" }
+cdas-core = { path = "crates/cascade-cdas/cdas-core" }
+cdas-core-agent = { path = "crates/cascade-cdas/cdas-core-agent" }
+cdas-provider-llm = { path = "crates/cascade-cdas/cdas-provider-llm" }
+cdas-provider-storage = { path = "crates/cascade-cdas/cdas-provider-storage" }
+cascade-interfaces = { path = "crates/cascade-interfaces" }
+
+
+[profile.release]
+lto = true
+codegen-units = 1
+panic = 'abort'
+
+[profile.dev]
+# Faster dev builds
+opt-level = 1 # Default 0, 's' or 'z' for size
+
+[profile.test]
+opt-level = 1 # Faster test builds
+
+[features]
+default = []
+integration_tests = []
+real-kb = []
+agent-integration = []
+cascade-kb = ["dep:cascade-kb"]
+
+[dev-dependencies]
+pretty_assertions = { version = "1.4" }
+tempfile = "3.8"
+rand = "0.8"
+chrono = { version = "0.4", features = ["serde"] }
+anyhow = "1.0"
+tokio = { version = "1", features = ["full", "test-util", "macros"] }
+serde_json = "1"
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+cascade-test-utils = { path = "crates/cascade-test-utils" }
+futures-util = "0.3"
+cucumber = "0.20"
+env_logger = "0.10"
+async-trait = "0.1"
+once_cell = "1.18"
+wiremock = "0.5"
+futures = "0.3"
+reqwest = { version = "0.11", features = ["json", "multipart"] }
+cargo-tarpaulin = "0.27"
+
+[dependencies]
+anyhow = "1.0"
+async-trait = "0.1"
+cascade-core = { path = "crates/cascade-core" }
+cascade-server = { path = "crates/cascade-server" }
+cascade-state-inmemory = { path = "crates/cascade-state-inmemory" }
+cascade-stdlib = { path = "crates/cascade-stdlib" }
+cascade-test-utils = { path = "crates/cascade-test-utils" }
+chrono = "0.4"
+regex = "1.9"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+serde_yaml.workspace = true
+tokio = { version = "1.28", features = ["full", "signal"] }
+tracing = "0.1"
+tracing-subscriber = "0.3"
+uuid = { version = "1.3", features = ["v4", "serde"] }
+
+# Core dependencies
+cdas-core = { path = "crates/cascade-cdas/cdas-core" }
+cdas-config = { path = "crates/cascade-cdas/cdas-config" }
+cdas-api-types = { path = "crates/cascade-cdas/cdas-api-types" }
+cascade-interfaces = { path = "crates/cascade-interfaces" }
+cascade-kb = { path = "crates/cascade-kb", optional = true }
+cdas-core-agent = { path = "crates/cascade-cdas/cdas-core-agent" }

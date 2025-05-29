@@ -1,0 +1,39 @@
+[package]
+name = "cascade-state-postgres"
+version = "0.1.0"
+edition = "2021"
+description = "PostgreSQL state store implementation for the Cascade Platform"
+
+[dependencies]
+cascade-core = { version = "0.1.0", path = "../cascade-core" }
+tokio = { version = "1.28.1", features = ["full"] }
+sqlx = { version = "0.8.4", features = ["runtime-tokio", "tls-native-tls", "postgres", "chrono", "json", "uuid", "migrate", "sqlite"] }
+async-trait = "0.1.68"
+tracing = "0.1"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1.0"
+thiserror = "1.0.38"
+anyhow = "1.0.71"
+uuid = { version = "1.3.3", features = ["v4", "serde"] }
+chrono = { version = "0.4.24", features = ["serde"] }
+libsqlite3-sys = { workspace = true }
+
+[dev-dependencies]
+tracing-subscriber = "0.3"
+tokio-test = "0.4.2"
+
+# Use conditional checking for SQLx queries
+[lib]
+name = "cascade_state_postgres"
+path = "src/lib.rs"
+
+[features]
+default = []
+sqlx-offline = []
+test-mode = []
+
+[package.metadata.sqlx]
+offline = true
+
+# Generate the sqlx data file:
+# cargo sqlx prepare --database-url postgres://postgres:postgres@localhost:5432/cascade -- --lib

@@ -1,0 +1,30 @@
+[package]
+name = "cascade-tests"
+version = "0.1.0"
+edition = "2021"
+publish = false
+
+# This is a meta-package for organizing the test structure
+# Do not define a workspace here to avoid nested workspaces
+# All test directories are included in the main workspace
+
+[features]
+default = []
+bdd = ["cascade-bdd-tests"]
+e2e = ["cascade-e2e-tests"]
+integrations = ["cascade-integration-tests"]
+all = ["bdd", "e2e", "integrations"]
+
+[dependencies]
+# These dependencies are now enabled to fix the feature dependencies
+cascade-bdd-tests = { path = "./bdd", optional = true }
+cascade-e2e-tests = { path = "./e2e", optional = true }
+cascade-integration-tests = { path = "./integrations", optional = true }
+
+[dev-dependencies]
+anyhow = "1.0"
+tokio = { version = "1.0", features = ["full", "test-util", "macros"] }
+
+# This is a virtual package that doesn't produce a binary/library
+[lib]
+path = "src/lib.rs" 

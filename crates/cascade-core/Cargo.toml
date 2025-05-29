@@ -1,0 +1,51 @@
+[package]
+name = "cascade-core"
+version = "0.1.0"
+edition = "2021"
+description = "The core runtime engine for the Cascade Platform."
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+tokio = { version = "1.35", features = ["full"] }
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+thiserror = "1.0"
+anyhow = "1.0"
+tracing = "0.1"
+async-trait = "0.1"
+uuid = { version = "1.7", features = ["v4", "serde"] }
+chrono = { version = "0.4", features = ["serde"] }
+jmespath = "0.3"
+dashmap = "5.5"
+futures = "0.3"
+
+# SQL dependencies are now optional and only used for testing
+sqlx = { version = "0.8.4", features = ["runtime-tokio-rustls", "postgres", "json", "chrono", "uuid", "macros", "sqlite"], optional = true }
+libsqlite3-sys = { workspace = true }
+
+# Add any component interfaces here (uncomment, adapt if used)
+# cascade-component = { version = "0.1.0", path = "../cascade-component" }
+
+[dev-dependencies]
+# Add any specific test dependencies
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+mockall = "0.12"
+tokio-test = "0.4"
+
+[features]
+# Features for enabling specific modules
+default = ["testing"]
+# The state_postgres feature is now only used for testing, and is not recommended for production
+state_postgres = ["sqlx"]
+# Testing-specific code
+testing = []
+# Run deprecated integration tests that use old APIs
+run_deprecated_tests = []
+
+# Any WASM dependencies
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+wasm-bindgen = "0.2"
+
+[build-dependencies]
+# If generating code at build time (rare)
